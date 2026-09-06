@@ -543,6 +543,7 @@ window.Render = (function () {
   function drawBarPreview(now) {
     var prev = Game.live.barPrev;
     if (!prev) return;
+    if (Game.side !== 0) { Game.live.barPrev = null; return; } // 防御: 非警察不画警察预览
     var me = Game.myEnt();
     if (!me) return;
     var aim = Input.aim;

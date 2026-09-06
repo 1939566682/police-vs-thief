@@ -17,7 +17,11 @@ window.Input = (function () {
       keys[e.code] = true;
       if (e.code === "Digit1") useItem(0);
       else if (e.code === "Digit2") useItem(1);
-      else if (e.code === "Digit3") toggleBar();
+      else if (e.code === "Digit3") {
+        // 3 号槽: 警察=路障(预览式), 小偷=伪装
+        if (Game.side === 0) toggleBar();
+        else if (Game.side === 1) useItem(2);
+      }
       else if (e.code === "Escape") cancelBar();
     });
     window.addEventListener("keyup", function (e) { keys[e.code] = false; });
