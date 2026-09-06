@@ -77,19 +77,24 @@ async function waitFree(c, ms) {
   const doorMe = findMe(A);
   ok(doorMe && doorMe.cd[2] <= 0.01, "门口保护区拒绝放置且不扣冷却 (cd[2]=" + (doorMe ? doorMe.cd[2] : "?") + ")");
 
-  /* ---- 测试1c: 小偷贴身拆除路障 ---- */
-  console.log("[balance] 小偷拆除路障");
+  /* ---- 测试1c: 滚轮朝向 + 小偷贴身拆除路障 ---- */
+  console.log("[balance] 路障滚轮朝向与拆除");
   tp(A, 200, 600);
   await wait(300);
   A.send({ t: "mv", x: 0, y: 0, ax: 400, ay: 500 }); // 开阔点: 端点不戳建筑
   await wait(200);
-  A.send({ t: "use", k: 2, x: 0 });
+  A.send({ t: "use", k: 2, x: 0, rot: 1.5708 }); // 滚轮旋转 +90°
   await wait(400);
   const haveBar = A.last.its.bar.length > 0;
   ok(haveBar, "警察已在开阔地放置路障 (" + A.last.its.bar.length + " 个)");
   if (haveBar) {
     const bars0 = A.last.its.bar.length;
     const b0 = A.last.its.bar.find((b) => Math.abs((b[0] + b[2]) / 2 - 400) < 60) || A.last.its.bar[0];
+    const ang = Math.atan2(b0[3] - b0[1], b0[2] - b0[0]);
+    const aimA = Math.atan2(500 - 600, 400 - 200); // 瞄准方向 ≈ -0.46
+    const noRot = aimA - Math.PI / 2; // 未旋转时段方向(垂直瞄准)
+    ok(Math.abs(ang - aimA) < 0.15 && Math.abs(ang - noRot) > 1.0,
+      "滚轮 +90° 朝向生效 (段角=" + ang.toFixed(2) + "rad, 未旋转应为" + noRot.toFixed(2) + ")");
     const mx = (b0[0] + b0[2]) / 2, my = (b0[1] + b0[3]) / 2;
     // 小偷贴到路障中点拆除(最多重试3轮, 防NPC干扰)
     let removed = false;
@@ -114,13 +119,20 @@ async function waitFree(c, ms) {
   await wait(700);
   const bIn = findMe(B);
   ok(bIn && bIn.c <= 0 && bIn.res < 0 && !(bIn.f & 1), "圈内紧贴不触发逮捕 (B.res=" + bIn.res + ")");
-  // 圈外对照: 出圈立即恢复可捕(同一时刻无保护期)
-  tp(B, 1150, 500);
-  await wait(300);
-  tp(A, 1170, 515); // 距离 ~28, 圈外
-  await wait(700);
-  const bOut = findMe(B);
-  ok(bOut && (bOut.c > 0 || bOut.res > 0), "圈外接触正常逮捕 (B.res=" + (bOut ? bOut.res : "?") + ")");
+  // 圈外对照: 出圈立即恢复可捕(若被NPC干扰自动重试)
+  let caught = false;
+  for (let r = 0; r < 3 && !caught; r++) {
+    tp(B, 1150, 500);
+    await waitFree(B, 5000);
+    const bf = findMe(B);
+    if (!bf || Math.abs(bf.x - 1150) > 80 || Math.abs(bf.y - 500) > 80) continue; // 没站住(被抓重生)
+    tp(A, 1170, 515); // 距离 ~28, 圈外
+    await wait(800);
+    const bo = findMe(B);
+    if (bo && (bo.c > 0 || bo.res > 0)) caught = true;
+    else console.log("  [retry] 圈外逮捕未触发, 重试");
+  }
+  ok(caught, "圈外接触正常逮捕");
   // 等 B 重生自由, 供后续用例使用
   await waitFree(B, 8000);
 

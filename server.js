@@ -196,7 +196,7 @@ function makeP(side, bot, name) {
     x: 0, y: 0, vx: 0, vy: 0, dir: 0,
     cd: [0, 0, 0], snare: 0, slow: 0, cau: 0, inv: 0, dis: 0, spr: 0, catchCd: 0,
     sc: 0, st: { c: 0, l: 0, i: 0 },
-    lootT: 0, lootX: 0, lootY: 0, breakT: 0,
+    lootT: 0, lootX: 0, lootY: 0, breakT: 0, barRot: 0,
     aimx: 0, aimy: 0, aimSet: 0, inx: 0, iny: 0,
     goal: null, gx: 0, gy: 0, stuck: 0, det: 0, dets: 1, tng: null, disc: 0
   };
@@ -247,7 +247,7 @@ function applyEffect(p, k) {
       S.its.dog.push({ id: ++S.seqP, x: p.x + Math.cos(p.dir) * 20, y: p.y + Math.sin(p.dir) * 20, t: TUN.dog.life, tg: null, hitCd: 0, dir: p.dir });
       fx("dog", p.x, p.y, { side: 0 });
     } else if (k === 2) {
-      const a = Math.atan2(p.aimy - p.y, p.aimx - p.x);
+      let a = Math.atan2(p.aimy - p.y, p.aimx - p.x) + (p.barRot || 0); // 预览滚轮偏转角
       let d = Math.hypot(p.aimx - p.x, p.aimy - p.y);
       let cx, cy;
       if (d < 80 || d > 460) { cx = p.x + Math.cos(a) * 300; cy = p.y + Math.sin(a) * 300; }
@@ -793,6 +793,8 @@ wss.on("connection", (ws) => {
       if (m.ax != null) { p.aimx = +m.ax; p.aimy = +m.ay; p.aimSet = 1; }
     } else if (m.t === "use" && ws.p) {
       if (TEST) console.log("[use]", ws.p.name, "k=" + m.k, "cd=" + ws.p.cd.map(v => v.toFixed(1)).join(","), "aim=" + ws.p.aimx.toFixed(0) + "," + ws.p.aimy.toFixed(0), "ph=" + S.ph, "gt=" + S.gt.toFixed(2), "cau=" + ws.p.cau);
+      // 路障预览可通过滚轮自定义朝向(rot 为相对瞄准方向的偏转角)
+      ws.p.barRot = m.k === 2 && m.rot != null ? +m.rot : 0;
       useItem(ws.p, m.k | 0, m.x ? 1 : 0, false);
     } else if (m.t === "leave" && ws.p) {
       const nm = ws.p.name;

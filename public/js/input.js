@@ -50,6 +50,13 @@ window.Input = (function () {
     window.addEventListener("contextmenu", function (e) {
       if (Game.live.barPrev) { e.preventDefault(); cancelBar(); }
     });
+    // 路障预览: 滚轮旋转朝向(每格 15°)
+    cv.addEventListener("wheel", function (e) {
+      if (!Game.live.barPrev) return;
+      e.preventDefault();
+      Game.live.barPrev.rot = (Game.live.barPrev.rot || 0) + (e.deltaY > 0 ? 1 : -1) * (Math.PI / 12);
+      SFX.click();
+    }, { passive: false });
     window.addEventListener("pointerup", function (e) {
       if (joy.active && e.pointerId === joy.id) { joy.active = false; joy.dx = 0; joy.dy = 0; updateStick(); }
     });
@@ -109,16 +116,17 @@ window.Input = (function () {
     if (!me || me.res > 0 || me.c > 0) return;
     if (st.ph !== "go" || st.gt > 0) return;
     if (me.cd[2] > 0.01) return; // 冷却中由道具按钮走积分兑换
-    Game.live.barPrev = { x: 0, y: 0, ok: true };
+    Game.live.barPrev = { x: 0, y: 0, ok: true, rot: 0 };
     SFX.click();
   }
   function confirmBar() {
     if (!Game.live.barPrev) return;
+    const rot = Math.round((Game.live.barPrev.rot || 0) * 100) / 100;
     Game.live.barPrev = null;
     var st = Game.state;
     var me = Game.myEnt();
     if (!st || st.ph !== "go" || st.gt > 0 || !me || me.res > 0 || me.c > 0 || me.cd[2] > 0.01) return;
-    Net.send({ t: "use", k: 2, x: 0 });
+    Net.send({ t: "use", k: 2, x: 0, rot: rot });
     // 放置成功 → 服务端 fx bar; 失败 → fx deny + toast, 冷却不扣(服务端回滚)
   }
   function cancelBar() {

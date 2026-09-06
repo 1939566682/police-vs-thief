@@ -584,6 +584,9 @@ window.Render = (function () {
       px = me.x + Math.cos(dir) * 300;
       py = me.y + Math.sin(dir) * 300;
     }
+    // 滚轮旋转: 在基准朝向上叠加偏转角
+    var rot = prev.rot || 0;
+    if (rot !== 0) dir = dir + rot;
     prev.x = px; prev.y = py;
     // 合法性: 与服务端一致(放置点 + 两端点 + 门口保护区)
     var h = 85;
@@ -626,12 +629,22 @@ window.Render = (function () {
     // 提示文字
     ctx.font = "bold 12px 'PingFang SC','Microsoft YaHei',sans-serif";
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    var tip = ok ? "左键 / 再按 3 放置" : "无法放置 · 右键取消";
+    var tip = ok ? "左键/再按3放置 · 滚轮转方向" : "无法放置 · 滚轮转方向";
     var tw = ctx.measureText(tip).width + 20;
     ctx.fillStyle = "rgba(8,10,16,.78)";
     rr(ctx, px - tw / 2, py - 46, tw, 20, 10); ctx.fill();
     ctx.fillStyle = ok ? "#8dffb0" : "#ff9b8a";
     ctx.fillText(tip, px, py - 36);
+    // 方向指示箭头(旋转朝向)
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(dir - Math.PI / 2);
+    ctx.strokeStyle = ok ? "#8dffb0" : "#ff9b8a"; ctx.lineWidth = 3; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(w / 2 + 8, 0); ctx.lineTo(w / 2 + 20, 0);
+    ctx.moveTo(w / 2 + 14, -5); ctx.lineTo(w / 2 + 20, 0); ctx.lineTo(w / 2 + 14, 5);
+    ctx.stroke();
+    ctx.restore();
     // 状态词
     ctx.font = "bold 13px 'PingFang SC','Microsoft YaHei',sans-serif";
     ctx.fillStyle = col;
