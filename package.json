@@ -1,0 +1,14 @@
+{
+  "name": "police-vs-thief",
+  "version": "1.0.0",
+  "private": true,
+  "description": "警匪追逐 · 实时互动对战游戏 (实时对战/阵营/道具/胜负判定)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": { "node": ">=16" },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

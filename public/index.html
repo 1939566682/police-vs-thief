@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
+<meta name="theme-color" content="#0b0e16"/>
+<title>警匪追逐 · 实时对战</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚨</text></svg>"/>
+<link rel="stylesheet" href="/css/style.css"/>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="vignette"></div>
+
+<div class="hud">
+  <div class="topbar">
+    <div class="brand"><span class="logo">🚨</span>警匪追逐<em>实况对战</em></div>
+    <div class="teamcard t-police" id="cardP">
+      <div class="tc-head"><b>👮 警察</b><span class="tc-count" id="cntP">0</span></div>
+      <div class="tc-bar"><i id="barP" style="width:0%"></i></div>
+      <div class="tc-sc" id="scP">0 / 10</div>
+    </div>
+    <div class="roundpill">
+      <div class="rp-l" id="roundL">第 1 局</div>
+      <div class="rp-t" id="roundT">2:00</div>
+      <div class="rp-ph" id="roundPh">准备</div>
+    </div>
+    <div class="teamcard t-thief" id="cardT">
+      <div class="tc-head"><span class="tc-count" id="cntT">0</span><b>小偷 🦹</b></div>
+      <div class="tc-bar"><i id="barT" style="width:0%"></i></div>
+      <div class="tc-sc" id="scT">0 / 10</div>
+    </div>
+  </div>
+
+  <div class="feed" id="feed"></div>
+
+  <div class="items" id="items"></div>
+
+  <div class="stick" id="stick"><div class="stick-knob" id="stickKnob"></div></div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="res" id="res"></div>
+
+  <button class="leavebtn" id="leaveBtn" title="退出阵营">✖ 退出</button>
+
+  <div class="floatjoin" id="floatjoin">
+    <button class="fjb fjb-p" data-f="0">👮 加入警察</button>
+    <button class="fjb fjb-t" data-f="1">🦹 加入小偷</button>
+  </div>
+</div>
+
+<div class="joinbox" id="joinbox">
+  <div class="jb-card">
+    <div class="jb-logo">🚨</div>
+    <h1>警匪追逐</h1>
+    <p class="jb-sub">街头实时追逐 · 选择你的阵营加入战斗</p>
+    <input id="nick" maxlength="10" placeholder="输入你的昵称" autocomplete="off"/>
+    <div class="jb-btns">
+      <button class="jb-btn police" data-f="0"><i>👮</i><b>加入警察</b><span class="jb-n" id="jbP">0 人</span></button>
+      <button class="jb-btn thief" data-f="1"><i>🦹</i><b>加入小偷</b><span class="jb-n" id="jbT">0 人</span></button>
+    </div>
+    <div class="jb-note">不加入也能观战全场实况, 随时点击底部分队</div>
+  </div>
+</div>
+
+<div class="conn" id="conn">📡 连接断开, 正在重连…</div>
+
+<script src="/js/map.js"></script>
+<script src="/js/audio.js"></script>
+<script src="/js/net.js"></script>
+<script src="/js/state.js"></script>
+<script src="/js/input.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/render.js"></script>
+<script src="/js/main.js"></script>
+</body>
+</html>
