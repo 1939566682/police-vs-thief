@@ -32,6 +32,14 @@ window.Render = (function () {
     }
     return true;
   }
+  /* 与服务端一致的基地门口保护区(路障不可覆盖门口) */
+  function barClear(x, y) {
+    var dk = MAP.doorKeep || [];
+    for (var i = 0; i < dk.length; i++) {
+      if (Math.hypot(x - dk[i].x, y - dk[i].y) < dk[i].r) return false;
+    }
+    return true;
+  }
 
   function init(canvas) {
     cv = canvas; ctx = canvas.getContext("2d");
@@ -234,6 +242,7 @@ window.Render = (function () {
     // 世界
     if (staticCv) ctx.drawImage(staticCv, 0, 0);
     if (G) {
+      drawSafeZone();
       drawSmokes(G);
       drawCoins(G);
       drawBars(G);
@@ -245,6 +254,23 @@ window.Render = (function () {
       drawFloats(now);
     }
     ctx.restore();
+  }
+
+  /* ---------------- 贼窝安全区(防堵门, 圈内不可逮捕) ---------------- */
+  function drawSafeZone() {
+    ctx.fillStyle = "rgba(80,220,180,0.05)";
+    ctx.beginPath(); ctx.arc(1360, 700, 132, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(80,220,180,0.45)";
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([16, 12]);
+    ctx.beginPath(); ctx.arc(1360, 700, 132, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = "bold 13px 'PingFang SC','Microsoft YaHei',sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(110,240,200,0.85)";
+    ctx.shadowColor = "rgba(80,220,180,0.6)"; ctx.shadowBlur = 8;
+    ctx.fillText("🛡 安全区 · 圈内不可被捕", 1360, 700 - 132 - 12);
+    ctx.shadowBlur = 0;
   }
 
   /* ---------------- 金币 ---------------- */
@@ -559,11 +585,12 @@ window.Render = (function () {
       py = me.y + Math.sin(dir) * 300;
     }
     prev.x = px; prev.y = py;
-    // 合法性: 与服务端一致(放置点 + 两端点)
+    // 合法性: 与服务端一致(放置点 + 两端点 + 门口保护区)
     var h = 85;
     var sx1 = px - Math.sin(dir) * h, sy1 = py + Math.cos(dir) * h;
     var sx2 = px + Math.sin(dir) * h, sy2 = py - Math.cos(dir) * h;
-    var ok = clientIsOpen(px, py, 10) && clientIsOpen(sx1, sy1, 8) && clientIsOpen(sx2, sy2, 8);
+    var ok = clientIsOpen(px, py, 10) && clientIsOpen(sx1, sy1, 8) && clientIsOpen(sx2, sy2, 8) &&
+      barClear(px, py) && barClear(sx1, sy1) && barClear(sx2, sy2);
     prev.ok = ok;
     var col = ok ? "#2ecc71" : "#ff4136";
     var dark = ok ? "#1d8f4a" : "#c92a2a";

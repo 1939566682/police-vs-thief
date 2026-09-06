@@ -68,6 +68,7 @@ window.Game = (function () {
           }
           break;
         case "bite": SFX.bite(); fxP("bite", e.x, e.y, 0); break;
+        case "break_bar": SFX.thunk(); fxP("bar", e.x, e.y, 1); float(e.x, e.y - 22, "🚧 路障被拆除!", "#8dffb0"); break;
         case "respawn": SFX.respawn(); fxP("ring", e.x, e.y, e.side); break;
         case "reveal": SFX.poof(); fxP("deny", e.x, e.y, 1); float(e.x, e.y - 24, "🕵️ 伪装识破!", "#ff9a5a"); break;
         case "join": SFX.join(); break;

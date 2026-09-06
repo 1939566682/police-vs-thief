@@ -175,6 +175,19 @@ function isOpen(x, y, r) {
   }
   return true;
 }
+/* 基地门口保护区: 路障不可放在门口通道内(防堵门) */
+function barClear(x, y) {
+  for (const dk of MAP.doorKeep) {
+    if (Math.hypot(x - dk.x, y - dk.y) < dk.r) return false;
+  }
+  return true;
+}
+/* 贼窝安全区: 圈内警察无法逮捕小偷(防出生点人肉堵门),
+   圈内也不刷金币, 小偷必须出门才能得分 */
+const DEN_SAFE = { x: 1360, y: 700, r: 132 };
+function inSafeZone(x, y) {
+  return Math.hypot(x - DEN_SAFE.x, y - DEN_SAFE.y) < DEN_SAFE.r;
+}
 
 /* ---------------- 玩家 ---------------- */
 function makeP(side, bot, name) {
@@ -183,7 +196,7 @@ function makeP(side, bot, name) {
     x: 0, y: 0, vx: 0, vy: 0, dir: 0,
     cd: [0, 0, 0], snare: 0, slow: 0, cau: 0, inv: 0, dis: 0, spr: 0, catchCd: 0,
     sc: 0, st: { c: 0, l: 0, i: 0 },
-    lootT: 0, lootX: 0, lootY: 0,
+    lootT: 0, lootX: 0, lootY: 0, breakT: 0,
     aimx: 0, aimy: 0, aimSet: 0, inx: 0, iny: 0,
     goal: null, gx: 0, gy: 0, stuck: 0, det: 0, dets: 1, tng: null, disc: 0
   };
@@ -241,8 +254,9 @@ function applyEffect(p, k) {
       else { cx = p.aimx; cy = p.aimy; }
       const h = TUN.bar.len / 2;
       const s = { id: ++S.seqP, x1: cx - Math.sin(a) * h, y1: cy + Math.cos(a) * h, x2: cx + Math.sin(a) * h, y2: cy - Math.cos(a) * h, t: TUN.bar.life, side: 0 };
-      if (TEST && k === 2) console.log("[bar]", p.name, "cand=" + cx.toFixed(0) + "," + cy.toFixed(0), "d=" + d.toFixed(0), "o=" + isOpen(cx, cy, 10), "s1=" + isOpen(s.x1, s.y1, 8), "s2=" + isOpen(s.x2, s.y2, 8));
-      if (!isOpen(cx, cy, 10) || !isOpen(s.x1, s.y1, 8) || !isOpen(s.x2, s.y2, 8)) {
+      if (TEST && k === 2) console.log("[bar]", p.name, "cand=" + cx.toFixed(0) + "," + cy.toFixed(0), "d=" + d.toFixed(0), "ok=" + (isOpen(cx, cy, 10) && isOpen(s.x1, s.y1, 8) && isOpen(s.x2, s.y2, 8) && barClear(cx, cy) && barClear(s.x1, s.y1) && barClear(s.x2, s.y2)));
+      if (!isOpen(cx, cy, 10) || !isOpen(s.x1, s.y1, 8) || !isOpen(s.x2, s.y2, 8) ||
+        !barClear(cx, cy) || !barClear(s.x1, s.y1) || !barClear(s.x2, s.y2)) {
         fx("deny", cx, cy, { side: 0, n: p.name, why: "place" });
         return false; // 放置失败: 不扣冷却 / 不扣积分
       }
@@ -482,7 +496,8 @@ function stepCoins(dt) {
       y = 80 + Math.random() * (MAP.world.h - 160);
       if (isOpen(x, y, 22) &&
         Math.hypot(x - 160, y - 160) > 175 &&
-        Math.hypot(x - 1340, y - 800) > 175) ok = true;
+        Math.hypot(x - 1340, y - 800) > 175 &&
+        !inSafeZone(x, y)) ok = true;
     }
     if (ok) S.coins.push({ x, y, ph: Math.random() * 6.28 });
   }
@@ -545,6 +560,26 @@ function stepDogs(dt) {
   }
 }
 function stepBarriers(dt) {
+  // 小偷可贴身拆除路障(0.55秒), 防止路障堵死基地门口/通道
+  for (const t of S.pl) {
+    if (t.side !== 1 || t.cau > 0) { t.breakT = 0; continue; }
+    let best = null, bd = 1e9;
+    for (const b of S.its.bar) {
+      const d = segDist(t.x, t.y, b.x1, b.y1, b.x2, b.y2);
+      if (d < bd) { bd = d; best = b; }
+    }
+    if (best && bd < 26) {
+      t.breakT += dt;
+      if (t.breakT >= 0.55) {
+        const idx = S.its.bar.indexOf(best);
+        if (idx >= 0) S.its.bar.splice(idx, 1);
+        t.breakT = 0;
+        fx("break_bar", (best.x1 + best.x2) / 2, (best.y1 + best.y2) / 2, { side: 1, n: t.name });
+      }
+    } else {
+      t.breakT = 0;
+    }
+  }
   for (let i = S.its.bar.length - 1; i >= 0; i--) {
     S.its.bar[i].t -= dt;
     if (S.its.bar[i].t <= 0) S.its.bar.splice(i, 1);
@@ -561,7 +596,9 @@ function checkCatches() {
     if (p.cau > 0 || p.catchCd > 0) continue;
     for (const t of enemies(1)) {
       if (t.cau > 0 || t.inv > 0 || t.dis > 0) continue;
+      if (inSafeZone(t.x, t.y)) continue; // 安全区内不可逮捕
       if (inSmokeAny(t) || smokeBetween(p, t)) continue;
+      if (TEST && t.bot === 0 && (p.bot === 0 || Math.random() < 0.05)) console.log("[catch]", p.name, "→", t.name, "d=" + dist(p, t).toFixed(1), "inv=" + t.inv.toFixed(1), "sna?f=" + t.f);
       if (dist(p, t) > TUN.catchR) continue;
       t.cau = TUN.cauHold; t.snare = 0; t.spr = 0;
       S.sc[0]++; p.sc++; p.st.c++;
