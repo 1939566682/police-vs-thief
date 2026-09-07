@@ -33,7 +33,7 @@ const TUN = {
   coinMax: 9,
   coinDelay: 1.4,
   cuff: { sp: 640, life: 1.3, snare: 2.6, cd: 9, cost: 3 },
-  dog: { sp: 350, life: 11, cd: 16, cost: 5, slow: 1.6 },
+  dog: { sp: 350, life: 11, cd: 16, cost: 5, slow: 1.6, staminaT: 6 },
   bar: { len: 170, life: 10, cd: 15, cost: 4 },
   smoke: { r: 160, life: 6.5, cd: 11, cost: 3 },
   sprint: { t: 3.4, mul: 1.72, cd: 12, cost: 2 },
@@ -244,7 +244,7 @@ function applyEffect(p, k) {
       });
       fx("cuff", p.x, p.y, { side: 0 });
     } else if (k === 1) {
-      S.its.dog.push({ id: ++S.seqP, x: p.x + Math.cos(p.dir) * 20, y: p.y + Math.sin(p.dir) * 20, t: TUN.dog.life, tg: null, hitCd: 0, dir: p.dir });
+      S.its.dog.push({ id: ++S.seqP, x: p.x + Math.cos(p.dir) * 20, y: p.y + Math.sin(p.dir) * 20, t: TUN.dog.life, tg: null, hitCd: 0, dir: p.dir, stamina: TUN.dog.staminaT, tired: 0, fatigueT: 0, restT: 0 });
       fx("dog", p.x, p.y, { side: 0 });
     } else if (k === 2) {
       let a = Math.atan2(p.aimy - p.y, p.aimx - p.x) + (p.barRot || 0); // 预览滚轮偏转角
@@ -550,8 +550,20 @@ function stepDogs(dt) {
     let a;
     if (t) a = Math.atan2(t.y - d.y, t.x - d.x);
     else { a = d.dir; d.dir += 0.1; }
-    d.x += Math.cos(a) * TUN.dog.sp * dt;
-    d.y += Math.sin(a) * TUN.dog.sp * dt;
+    // 体力: 追猎 6 秒后疲惫(速度降到小偷之下), 3 秒后恢复
+    if (d.tired) {
+      d.fatigueT -= dt;
+      if (d.fatigueT <= 0) { d.tired = 0; d.stamina = TUN.dog.staminaT; }
+      d.x += Math.cos(a) * TUN.dog.sp * 0.5 * dt;
+      d.y += Math.sin(a) * TUN.dog.sp * 0.5 * dt;
+    } else {
+      if (t) { // 追猎目标时消耗体力
+        d.stamina -= dt;
+        if (d.stamina <= 0) { d.tired = 1; d.fatigueT = 3; }
+      }
+      d.x += Math.cos(a) * TUN.dog.sp * dt;
+      d.y += Math.sin(a) * TUN.dog.sp * dt;
+    }
     resolveEnt(d, 14, null);
     if (t && Math.hypot(t.x - d.x, t.y - d.y) < 26 && d.hitCd <= 0) {
       t.slow = TUN.dog.slow; d.hitCd = 1.1;
@@ -716,7 +728,7 @@ function buildState() {
   }));
   const its = {
     cuff: S.its.cuff.map((c) => [Math.round(c.x), Math.round(c.y), +c.vx.toFixed(0), +c.vy.toFixed(0), c.id]),
-    dog: S.its.dog.map((d) => [Math.round(d.x), Math.round(d.y), d.id]),
+    dog: S.its.dog.map((d) => [Math.round(d.x), Math.round(d.y), d.id, d.tired ? 1 : 0]),
     bar: S.its.bar.map((b) => [Math.round(b.x1), Math.round(b.y1), Math.round(b.x2), Math.round(b.y2), b.id]),
     smoke: S.its.smoke.map((c) => [Math.round(c.x), Math.round(c.y), Math.round(c.r), +c.t.toFixed(1), c.id])
   };
@@ -805,6 +817,10 @@ wss.on("connection", (ws) => {
       if (m.k === "end") endRound(m.w != null ? m.w : 0, "dev");
       if (m.k === "score") S.sc = [+m.p || 0, +m.t || 0];
       if (m.k === "tp" && ws.p) { ws.p.x = +m.x || 100; ws.p.y = +m.y || 100; }
+      if (m.k === "dog" && ws.p) {
+        S.its.dog.push({ id: ++S.seqP, x: ws.p.x, y: ws.p.y, t: TUN.dog.life, tg: null, hitCd: 0, dir: ws.p.dir, stamina: TUN.dog.staminaT, tired: 0, fatigueT: 0, restT: 0 });
+        fx("dog", ws.p.x, ws.p.y, { side: 0 });
+      }
     }
   });
   ws.on("close", () => {

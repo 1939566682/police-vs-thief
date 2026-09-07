@@ -368,6 +368,7 @@ window.Render = (function () {
     for (var i = 0; i < G.its.dog.length; i++) {
       var d = G.its.dog[i];
       var px = d[0], py = d[1];
+      var tired = d.length > 3 && d[3] === 1;
       var ang = 0;
       if (dogPrev[d[2]]) { ang = Math.atan2(py - dogPrev[d[2]][1], px - dogPrev[d[2]][0]); }
       dogPrev[d[2]] = [px, py];
@@ -375,34 +376,53 @@ window.Render = (function () {
       ctx.translate(px, py);
       ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(0, 9, 12, 5, 0, 0, 7); ctx.fill();
       ctx.rotate(ang);
-      // 尾巴
+      // 尾巴(疲惫时耷拉不摇)
       ctx.strokeStyle = "#6d4c33"; ctx.lineWidth = 4; ctx.lineCap = "round";
-      ctx.beginPath(); ctx.moveTo(-10, -2); ctx.quadraticCurveTo(-16, -6 + Math.sin(t * 3) * 4, -20, -8); ctx.stroke();
-      // 身体
-      ctx.fillStyle = "#8a5a33";
+      ctx.beginPath();
+      if (tired) { ctx.moveTo(-10, -2); ctx.quadraticCurveTo(-16, 2, -20, 3); }
+      else ctx.moveTo(-10, -2); ctx.quadraticCurveTo(-16, -6 + Math.sin(t * 3) * 4, -20, -8);
+      ctx.stroke();
+      // 身体(疲惫时更暗)
+      ctx.fillStyle = tired ? "#6d4526" : "#8a5a33";
       ctx.beginPath(); ctx.ellipse(0, 0, 13, 9, 0, 0, 7); ctx.fill();
-      ctx.fillStyle = "#c98d56";
+      ctx.fillStyle = tired ? "#9c6c3c" : "#c98d56";
       ctx.beginPath(); ctx.ellipse(2, 0, 11, 7, 0, 0, 7); ctx.fill();
       // 头
-      ctx.fillStyle = "#8a5a33";
+      ctx.fillStyle = tired ? "#6d4526" : "#8a5a33";
       ctx.beginPath(); ctx.arc(12, -1, 7, 0, 7); ctx.fill();
-      // 耳朵
+      // 耳朵(疲惫时下垂)
       ctx.fillStyle = "#5d3b22";
-      ctx.beginPath(); ctx.moveTo(8, -6); ctx.lineTo(12, -12); ctx.lineTo(15, -6); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(14, -6); ctx.lineTo(18, -11); ctx.lineTo(20, -5); ctx.fill();
+      if (tired) {
+        ctx.beginPath(); ctx.moveTo(8, -4); ctx.quadraticCurveTo(10, 1, 8, 4); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(14, -4); ctx.quadraticCurveTo(16, 1, 14, 4); ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.moveTo(8, -6); ctx.lineTo(12, -12); ctx.lineTo(15, -6); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(14, -6); ctx.lineTo(18, -11); ctx.lineTo(20, -5); ctx.fill();
+      }
       // 鼻子
       ctx.fillStyle = "#2b1c10"; ctx.beginPath(); ctx.arc(18, 0, 2.4, 0, 7); ctx.fill();
+      // 舌头(疲惫时吐出)
+      if (tired) {
+        ctx.fillStyle = "#e88";
+        ctx.beginPath(); ctx.ellipse(15, 5, 2.6, 3.6, 0, 0, 7); ctx.fill();
+      }
       // 项圈
       ctx.strokeStyle = "#3d7bff"; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(12, -1, 7, -1, 1.4); ctx.stroke();
-      // 脚
+      // 脚(疲惫时缓慢拖步)
       ctx.strokeStyle = "#5d3b22"; ctx.lineWidth = 3; ctx.lineCap = "round";
-      var step = Math.sin(t * 9);
+      var step = Math.sin(t * (tired ? 4 : 9));
       ctx.beginPath();
       ctx.moveTo(-8, 6); ctx.lineTo(-8 + step * 2, 12);
       ctx.moveTo(-2, 7); ctx.lineTo(-2 - step * 2, 13);
       ctx.moveTo(4, 6); ctx.lineTo(4 + step * 2, 12);
       ctx.stroke();
+      // 疲惫气泡
+      if (tired) {
+        ctx.font = "13px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillStyle = "#8fb4d8";
+        ctx.fillText("💤", 0, -22);
+      }
       ctx.restore();
     }
   }

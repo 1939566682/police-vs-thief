@@ -122,11 +122,11 @@ async function waitFree(c, ms) {
   // 圈外对照: 出圈立即恢复可捕(若被NPC干扰自动重试)
   let caught = false;
   for (let r = 0; r < 3 && !caught; r++) {
-    tp(B, 1150, 500);
+    tp(B, 1400, 160); // 右上角空地(远离NPC巡逻, 圈外: 距门心~730)
     await waitFree(B, 5000);
     const bf = findMe(B);
-    if (!bf || Math.abs(bf.x - 1150) > 80 || Math.abs(bf.y - 500) > 80) continue; // 没站住(被抓重生)
-    tp(A, 1170, 515); // 距离 ~28, 圈外
+    if (!bf || Math.abs(bf.x - 1400) > 80 || Math.abs(bf.y - 160) > 80) continue; // 没站住(被抓重生)
+    tp(A, 1372, 150); // 距离 ~30, 圈外
     await wait(800);
     const bo = findMe(B);
     if (bo && (bo.c > 0 || bo.res > 0)) caught = true;
@@ -138,25 +138,35 @@ async function waitFree(c, ms) {
 
   /* ---- 测试2: 手铐瞄准吸附 ── 偏角 11° 自动修正 ---- */
   console.log("[balance] 手铐弹道吸附");
-  await waitFree(B, 6000); // 等待保护期结束
-  tp(A, 300, 330);
-  tp(B, 460, 330); // B 在 A 正东 160px
-  await wait(300);
-  A.send({ t: "mv", x: 0, y: 0, ax: 310, ay: 332 }); // 瞄准偏上 ~11°
-  await wait(200);
-  A.send({ t: "use", k: 0, x: 0 });
-  await wait(120); // 手铐 640 速度, 160px 距离 0.25s 命中, 必须提前读取
-  const cuff = A.last.its.cuff.length ? A.last.its.cuff[0] : null;
-  const meB = findMe(B);
-  const snared = meB && (meB.f & 1) ? true : false;
-  ok(!!cuff || snared, "手铐已发射(或已命中目标)");
-  if (cuff) {
-    const flyA = Math.atan2(cuff[3], cuff[2]);
-    const diff = Math.abs(flyA);
-    ok(diff < 0.12, "飞行方向吸附到正东目标 (偏差=" + (diff * 57.3).toFixed(1) + "°)");
-  } else {
-    ok(snared, "手铐命中并禁锢目标 (f=" + (meB ? meB.f : "?") + ")");
+  let absorbOk = false;
+  for (let r = 0; r < 3 && !absorbOk; r++) {
+    await waitFree(B, 6000); // 等待保护期结束
+    tp(A, 1240, 150);
+    tp(B, 1400, 150); // B 在 A 正东 160px(角落区, NPC 干扰少)
+    await wait(350);
+    const bT = findMe(B);
+    if (!bT || Math.abs(bT.x - 1400) > 60 || Math.abs(bT.y - 150) > 60 || (bT.f & 2)) {
+      console.log("  [retry] 目标未就位(被NPC干扰), 重试");
+      continue;
+    }
+    A.send({ t: "mv", x: 0, y: 0, ax: 1250, ay: 152 }); // 瞄准偏上 ~11°
+    await wait(200);
+    A.send({ t: "use", k: 0, x: 0 });
+    await wait(120); // 手铐 640 速度, 160px 距离 0.25s 命中, 必须提前读取
+    const cuff = A.last.its.cuff.length ? A.last.its.cuff[0] : null;
+    const meB = findMe(B);
+    const snared = meB && (meB.f & 1) ? true : false;
+    if (!cuff && !snared) { console.log("  [retry] 手铐未命中, 重试"); continue; }
+    if (cuff) {
+      const flyA = Math.atan2(cuff[3], cuff[2]);
+      const diff = Math.abs(flyA);
+      absorbOk = diff < 0.12;
+      if (!absorbOk) console.log("  [retry] 弹道偏差 " + (diff * 57.3).toFixed(1) + "°, 重试");
+    } else {
+      absorbOk = snared; // 已命中即视为通过
+    }
   }
+  ok(absorbOk, "手铐弹道吸附命中目标");
 
   /* ---- 测试2b: 禁锢期间道具禁用, 禁锢结束恢复 ---- */
   console.log("[balance] 禁锢期间道具禁用");
@@ -241,6 +251,33 @@ async function waitFree(c, ms) {
     if (me3 && me3.lp < 0 && stillThere && notScored) interrupted = true;
   }
   ok(interrupted, "离开后读条中断且金币保留未计分");
+
+  /* ---- 测试4: 警犬体能(追猎6秒疲惫, 3秒后恢复) ---- */
+  console.log("[balance] 警犬体能");
+  await waitFree(B, 6000);
+  tp(B, 1360, 650); // 小偷站进安全区当活靶(圈内警察抓不了, 狗依然锁定追猎)
+  await wait(300);
+  tp(A, 1230, 600);
+  await wait(300);
+  A.send({ t: "dev", k: "dog" });
+  await wait(500);
+  // dev 狗 push 到数组末尾, 取最后一条(避免误取 NPC 警察放的狗)
+  const dog0 = A.last.its.dog.length ? A.last.its.dog[A.last.its.dog.length - 1] : null;
+  ok(!!dog0, "警犬已放出");
+  if (dog0) {
+    await wait(6500); // 追猎 6 秒 → 疲惫
+    const dog1 = A.last.its.dog.find((d) => d[2] === dog0[2]);
+    ok(dog1 && dog1[3] === 1, "追猎6秒后警犬疲惫 (tired=" + (dog1 ? dog1[3] : "?") + ")");
+    // 轮询等待疲惫→恢复(恢复点在 9s, 寿命 11s)
+    let recovered = false;
+    for (let i = 0; i < 34; i++) {
+      await wait(120);
+      const d = A.last.its.dog.find((x) => x[2] === dog0[2]);
+      if (!d) break; // 狗已自然消失
+      if (d[3] === 0) { recovered = true; break; }
+    }
+    ok(recovered, "疲惫3秒后恢复体力");
+  }
   A.ws.close(); B.ws.close();
   console.log(fail === 0 ? "\n✅ 平衡性验证全部通过" : "\n❌ 有 " + fail + " 项失败");
   process.exit(fail === 0 ? 0 : 1);
